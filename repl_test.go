@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"pokedex/internal/pokecache"
 	"testing"
 	"time"
 )
@@ -72,7 +73,7 @@ func TestAddGet(t *testing.T) {
 
 	for i, c := range cases {
 		t.Run(fmt.Sprintf("Test case %v", i), func(t *testing.T) {
-			cache := NewCache(interval)
+			cache := pokecache.NewCache(interval)
 			cache.Add(c.key, c.val)
 			val, ok := cache.Get(c.key)
 			if !ok {
@@ -90,7 +91,7 @@ func TestAddGet(t *testing.T) {
 func TestReapLoop(t *testing.T) {
 	const baseTime = 5 * time.Millisecond
 	const waitTime = baseTime + 5*time.Millisecond
-	cache := NewCache(baseTime)
+	cache := pokecache.NewCache(baseTime)
 	cache.Add("https://example.com", []byte("testdata"))
 
 	_, ok := cache.Get("https://example.com")
@@ -105,5 +106,31 @@ func TestReapLoop(t *testing.T) {
 	if ok {
 		t.Errorf("expected to not find key")
 		return
+	}
+}
+
+func TestOverwriteEntry(t *testing.T) {
+	const interval = 1 * time.Second
+	cache := pokecache.NewCache(interval)
+
+	key := "https://example.com/data"
+
+	cache.Add(key, []byte("first"))
+	val, ok := cache.Get(key)
+	if !ok || string(val) != "first" {
+		t.Errorf("expected first value, got %q", val)
+	}
+
+	// Overwrite with a new value
+	cache.Add(key, []byte("second"))
+	val, ok = cache.Get(key)
+	if !ok || string(val) != "second" {
+		t.Errorf("expected overwritten value 'second', got %q", val)
+	}
+
+	time.Sleep(500 * time.Millisecond)
+	_, ok = cache.Get(key)
+	if !ok {
+		t.Errorf("expected to find key after overwrite (still valid)")
 	}
 }

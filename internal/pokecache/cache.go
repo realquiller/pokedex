@@ -1,7 +1,6 @@
 package pokecache
 
 import (
-	"fmt"
 	"sync"
 	"time"
 )
@@ -43,6 +42,15 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 	defer c.mu.Unlock()
 
 	entry, ok := c.store[key]
+	if !ok {
+		return nil, false
+	}
+
+	// Check if entry expired
+	if time.Since(entry.createdAt) > c.interval {
+		delete(c.store, key) // optional: delete expired one
+		return nil, false
+	}
 	return entry.val, ok
 }
 
@@ -55,7 +63,7 @@ func (c *Cache) reapLoop() {
 		for key, entry := range c.store {
 			if time.Since(entry.createdAt) > c.interval {
 				delete(c.store, key)
-				fmt.Println("☠️ Reaped:", key)
+				// fmt.Println("☠️ Reaped:", key)
 			}
 		}
 		c.mu.Unlock()
